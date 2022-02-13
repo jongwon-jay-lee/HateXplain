@@ -66,101 +66,85 @@ def giveSpanList(row,tokens,string1,data_type):
     return string_all
 
 
+def return_mask(row, params, tokenizer):
+    text_tokens = row['text']
 
-
-
-
-def returnMask(row,params,tokenizer):
-    
-    text_tokens=row['text']
-    
-    
-    
-    ##### a very rare corner case
-    if(len(text_tokens)==0):
-        text_tokens=['dummy']
+    # a very rare corner case
+    if len(text_tokens) == 0:
+        text_tokens = ['dummy']
         print("length of text ==0")
-    #####
-    
-    
-    mask_all= row['rationales']
-    mask_all_temp=mask_all
-    count_temp=0
-    while(len(mask_all_temp)!=3):
-        mask_all_temp.append([0]*len(text_tokens))
-    
-    word_mask_all=[]
-    word_tokens_all=[]
-    
+
+    mask_all = row['rationales']
+    mask_all_temp = mask_all
+    count_temp = 0
+    while len(mask_all_temp) < 3:  # if the num of rationale tagging is less than 3, append to make it 3
+        mask_all_temp.append([0] * len(text_tokens))
+
+    word_mask_all = []
+    word_tokens_all = []
+
     for mask in mask_all_temp:
-        if(mask[0]==-1):
-            mask=[0]*len(mask)
-        
-        
-        list_pos=[]
-        mask_pos=[]
-        
-        flag=0
-        for i in range(0,len(mask)):
-            if(i==0 and mask[i]==0):
+        if mask[0] == -1:
+            mask = [0] * len(mask)
+
+        list_pos = []
+        mask_pos = []
+
+        flag = 0
+        for i in range(0, len(mask)):
+            if i == 0 and mask[i] == 0:         # initialize
                 list_pos.append(0)
                 mask_pos.append(0)
-            
-            
-            
-            
-            if(flag==0 and mask[i]==1):
+
+            if flag == 0 and mask[i] == 1:      # check the start of rationale
                 mask_pos.append(1)
                 list_pos.append(i)
-                flag=1
-                
-            elif(flag==1 and mask[i]==0):
-                flag=0
+                flag = 1
+
+            elif flag == 1 and mask[i] == 0:    # check the end of rationale
+                flag = 0
                 mask_pos.append(0)
                 list_pos.append(i)
-        if(list_pos[-1]!=len(mask)):
+
+        if list_pos[-1] != len(mask):
             list_pos.append(len(mask))
             mask_pos.append(0)
-        string_parts=[]
-        for i in range(len(list_pos)-1):
-            string_parts.append(text_tokens[list_pos[i]:list_pos[i+1]])
-        
-        
-        
-        
-        if(params['bert_tokens']):
-            word_tokens=[101]
-            word_mask=[0]
+        # get the sub parts by rationale
+        string_parts = []
+        for i in range(len(list_pos) - 1):
+            string_parts.append(text_tokens[list_pos[i]:list_pos[i + 1]])
+
+        if params['bert_tokens']:
+            word_tokens = [tokenizer.cls_token_id]
+            word_mask = [0]
         else:
-            word_tokens=[]
-            word_mask=[]
+            word_tokens = []
+            word_mask = []
 
-        
-        for i in range(0,len(string_parts)):
-            tokens=ek_extra_preprocess(" ".join(string_parts[i]),params,tokenizer)
-            masks=[mask_pos[i]]*len(tokens)
-            word_tokens+=tokens
-            word_mask+=masks
+        for i in range(0, len(string_parts)):
+            tokens = ek_extra_preprocess(" ".join(string_parts[i]), params, tokenizer)
+            masks = [mask_pos[i]] * len(tokens)
+            word_tokens += tokens
+            word_mask += masks
 
-
-        if(params['bert_tokens']):
-            ### always post truncation
-            word_tokens=word_tokens[0:(int(params['max_length'])-2)]
-            word_mask=word_mask[0:(int(params['max_length'])-2)]
-            word_tokens.append(102)
+        if params['bert_tokens']:
+            # always post truncation
+            word_tokens = word_tokens[0:(int(params['max_length']) - 2)]
+            word_mask = word_mask[0:(int(params['max_length']) - 2)]
+            word_tokens.append(tokenizer.sep_token_id)
             word_mask.append(0)
 
         word_mask_all.append(word_mask)
         word_tokens_all.append(word_tokens)
-        
-#     for k in range(0,len(mask_all)):
-#          if(mask_all[k][0]==-1):
-#             word_mask_all[k] = [-1]*len(word_mask_all[k])
-    if(len(mask_all)==0):
-        word_mask_all=[]
-    else:    
-        word_mask_all=word_mask_all[0:len(mask_all)]
-    return word_tokens_all[0],word_mask_all    
+
+    #     for k in range(0,len(mask_all)):
+    #          if(mask_all[k][0]==-1):
+    #             word_mask_all[k] = [-1]*len(word_mask_all[k])
+    if len(mask_all) == 0:
+        word_mask_all = []
+    else:
+        word_mask_all = word_mask_all[0:len(mask_all)]
+    return word_tokens_all[0], word_mask_all
         
         
         

@@ -6,7 +6,7 @@ from difflib import SequenceMatcher
 from collections import Counter
 from .preProcess import ek_extra_preprocess
 from .attentionCal import aggregate_attention
-from .spanMatcher import returnMask,returnMaskonetime
+from .spanMatcher import return_mask,returnMaskonetime
 from transformers import BertTokenizer
 from .utils import CheckForGreater,most_frequent
 from .preProcess import *   
@@ -30,94 +30,88 @@ def set_name(params):
     return file_name
 
 
-
 def get_annotated_data(params):
-    #temp_read = pd.read_pickle(params['data_file'])
-    with open(params['data_file'], 'r') as fp:
+    # temp_read = pd.read_pickle(params['data_file'])
+    with open(params['data_file'], 'r', encoding='utf-8') as fp:
         data = json.load(fp)
-    dict_data=[]
+    dict_data = []
     for key in data:
-        temp={}
-        temp['post_id']=key
-        temp['text']=data[key]['post_tokens']
-        final_label=[]
-        for i in range(1,4):
-            temp['annotatorid'+str(i)]=data[key]['annotators'][i-1]['annotator_id']
-#             temp['explain'+str(i)]=data[key]['annotators'][i-1]['rationales']
-            temp['target'+str(i)]=data[key]['annotators'][i-1]['target']
-            temp['label'+str(i)]=data[key]['annotators'][i-1]['label']
-            final_label.append(temp['label'+str(i)])
+        temp = {}
+        temp['post_id'] = key
+        temp['text'] = data[key]['post_tokens']
+        final_label = []
+        for annotate_idx in range(1, 4):
+            temp['annotatorid' + str(annotate_idx)] = data[key]['annotators'][annotate_idx - 1]['annotator_id']
+            #             temp['explain'+str(i)]=data[key]['annotators'][i-1]['rationales']
+            temp['target' + str(annotate_idx)] = data[key]['annotators'][annotate_idx - 1]['target']
+            temp['label' + str(annotate_idx)] = data[key]['annotators'][annotate_idx - 1]['label']
+            final_label.append(temp['label' + str(annotate_idx)])
 
-        final_label_id=max(final_label,key=final_label.count)
-        temp['rationales']=data[key]['rationales']
-            
-        if(params['class_names']=='Data/classes_two.npy'):
-            if(final_label.count(final_label_id)==1):
-                temp['final_label']='undecided'
+        final_label_id = max(final_label, key=final_label.count)
+        temp['rationales'] = data[key]['rationales']
+
+        if params['class_names'] == 'Data/classes_two.npy':
+            if final_label.count(final_label_id) == 1:
+                temp['final_label'] = 'undecided'
             else:
-                if(final_label_id in ['hatespeech','offensive']):
-                    final_label_id='toxic'
+                if final_label_id in ['hatespeech', 'offensive']:
+                    final_label_id = 'toxic'
                 else:
-                    final_label_id='non-toxic'
-                temp['final_label']=final_label_id
+                    final_label_id = 'non-toxic'
+                temp['final_label'] = final_label_id
 
-        
+
         else:
-            if(final_label.count(final_label_id)==1):
-                temp['final_label']='undecided'
+            if final_label.count(final_label_id) == 1:
+                temp['final_label'] = 'undecided'
             else:
-                temp['final_label']=final_label_id
+                temp['final_label'] = final_label_id
 
-        
-        
-        
-        dict_data.append(temp)    
+        dict_data.append(temp)
     temp_read = pd.DataFrame(dict_data)  
-    return temp_read    
+    return temp_read
 
 
+def get_training_data(data, params, tokenizer):
+    """
+    input: data is a dataframe text ids attentions labels column only
+    output: training data in the columns post_id,text, attention and labels
+    """
 
+    majority = params['majority']
+    post_ids_list = []
+    text_list = []
+    attention_list = []
+    label_list = []
+    count = 0
+    count_confused = 0
+    print('total_data', len(data))
+    for index, row in tqdm(data.iterrows(), total=len(data)):
+        # print(params)
+        text = row['text']
+        post_id = row['post_id']
 
+        annotation_list = [row['label1'], row['label2'], row['label3']]
+        annotation = row['final_label']
 
-def get_training_data(data,params,tokenizer):
-    '''input: data is a dataframe text ids attentions labels column only'''
-    '''output: training data in the columns post_id,text, attention and labels '''
-
-    majority=params['majority']
-    post_ids_list=[]
-    text_list=[]
-    attention_list=[]
-    label_list=[]
-    count=0
-    count_confused=0
-    print('total_data',len(data))
-    for index,row in tqdm(data.iterrows(),total=len(data)):
-        #print(params)
-        text=row['text']
-        post_id=row['post_id']
-
-        annotation_list=[row['label1'],row['label2'],row['label3']] 
-        annotation=row['final_label']
-        
-        if(annotation != 'undecided'):
-            tokens_all,attention_masks=returnMask(row,params,tokenizer)
-            attention_vector= aggregate_attention(attention_masks,row, params)     
+        if annotation != 'undecided':
+            word_tokens, attention_mask_list = return_mask(row, params, tokenizer)
+            attention_vector = aggregate_attention(attention_mask_list, row['final_label'], params)
             attention_list.append(attention_vector)
-            text_list.append(tokens_all)
+            text_list.append(word_tokens)
             label_list.append(annotation)
             post_ids_list.append(post_id)
         else:
-            count_confused+=1
-            
-    print("attention_error:",count)
-    print("no_majority:",count_confused)
+            count_confused += 1
+
+    print("attention_error:", count)
+    print("no_majority:", count_confused)
     # Calling DataFrame constructor after zipping 
     # both lists, with columns specified 
-    training_data = pd.DataFrame(list(zip(post_ids_list,text_list,attention_list,label_list)), 
-                   columns =['Post_id','Text', 'Attention' , 'Label']) 
-    
-    
-    filename=set_name(params)
+    training_data = pd.DataFrame(list(zip(post_ids_list, text_list, attention_list, label_list)),
+                                 columns=['Post_id', 'Text', 'Attention', 'Label'])
+
+    filename = set_name(params)
     training_data.to_pickle(filename)
     return training_data
 
@@ -138,11 +132,11 @@ def get_test_data(data,params,message='text'):
     attention_list=[]
     label_list=[]
     print('total_data',len(data))
-    for index,row in tqdm(data.iterrows(),total=len(data)):
-        post_id=row['post_id']
-        annotation=row['final_label']
-        tokens_all,attention_masks=returnMask(row,params,tokenizer)
-        attention_vector= aggregate_attention(attention_masks,row, params) 
+    for index, row in tqdm(data.iterrows(), total=len(data)):
+        post_id = row['post_id']
+        annotation = row['final_label']
+        tokens_all, attention_masks = return_mask(row, params, tokenizer)
+        attention_vector = aggregate_attention(attention_masks, row['final_label'], params)
         attention_list.append(attention_vector)
         text_list.append(tokens_all)
         label_list.append(annotation)
@@ -222,13 +216,13 @@ def transform_dummy_data(sentences):
 
 
 def collect_data(params):
-    if(params['bert_tokens']):
+    if params['bert_tokens']:
         print('Loading BERT tokenizer...')
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False)
     else:
-        tokenizer=None
-    data_all_labelled=get_annotated_data(params)
-    train_data=get_training_data(data_all_labelled,params,tokenizer)
+        tokenizer = None
+    data_all_labelled = get_annotated_data(params)
+    train_data = get_training_data(data_all_labelled, params, tokenizer)
     return train_data
 
 

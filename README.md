@@ -98,3 +98,9 @@ For more details about the end to end pipleline visit [our_demo](https://github.
 
 
 #####  :thumbsup: The repo is still in active developements. Feel free to create an [issue](https://github.com/punyajoy/HateXplain/issues) !!  :thumbsup:
+
+### Install Libs
+1. Conda install : cryptacular
+2. No version matched : torch, dataclasses, numpy 
+3. Missed: tensorflow
+4. spacy Model: en_core_web_sm 

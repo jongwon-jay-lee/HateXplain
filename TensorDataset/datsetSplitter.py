@@ -56,22 +56,21 @@ class Vocab_own():
         self.embeddings=np.array(self.embeddings)
         print(self.embeddings.shape)
 
-    
-    
-def encodeData(dataframe,vocab,params):
-    tuple_new_data=[]
-    for index,row in tqdm(dataframe.iterrows(),total=len(dataframe)):
-        if(params['bert_tokens']):
-            tuple_new_data.append((row['Text'],row['Attention'],row['Label']))
-        else:   
-            list_token_id=[]
+
+def encodeData(dataframe, vocab, params):
+    tuple_new_data = []
+    for index, row in tqdm(dataframe.iterrows(), total=len(dataframe)):
+        if (params['bert_tokens']):
+            tuple_new_data.append((row['Text'], row['Attention'], row['Label']))
+        else:
+            list_token_id = []
             for word in row['Text']:
                 try:
-                    index=vocab.stoi[word]
+                    index = vocab.stoi[word]
                 except KeyError:
-                    index=vocab.stoi['unk']
+                    index = vocab.stoi['unk']
                 list_token_id.append(index)
-            tuple_new_data.append((list_token_id,row['Attention'],row['Label']))
+            tuple_new_data.append((list_token_id, row['Attention'], row['Label']))
     return tuple_new_data
 
 
@@ -107,25 +106,25 @@ def createDatasetSplit(params):
         #X_train_dev, X_test= train_test_split(dataset, test_size=0.1, random_state=1,stratify=dataset['Label'])
         #X_train, X_val= train_test_split(X_train_dev, test_size=0.11, random_state=1,stratify=X_train_dev['Label'])
         with open('Data/post_id_divisions.json', 'r') as fp:
-            post_id_dict=json.load(fp)
-        
-        X_train=dataset[dataset['Post_id'].isin(post_id_dict['train'])]
-        X_val=dataset[dataset['Post_id'].isin(post_id_dict['val'])]
-        X_test=dataset[dataset['Post_id'].isin(post_id_dict['test'])]
-        
-        if(params['bert_tokens']):
-            vocab_own=None    
-            vocab_size =0
-            padding_idx =0
-        else:
-            vocab_own=Vocab_own(X_train,word2vecmodel1)
-            vocab_own.create_vocab()
-            padding_idx=vocab_own.stoi['<pad>']
-            vocab_size=len(vocab_own.vocab)
+            post_id_dict = json.load(fp)
+        # split dataset by its designated id list
+        X_train = dataset[dataset['Post_id'].isin(post_id_dict['train'])]
+        X_val = dataset[dataset['Post_id'].isin(post_id_dict['val'])]
+        X_test = dataset[dataset['Post_id'].isin(post_id_dict['test'])]
 
-        X_train=encodeData(X_train,vocab_own,params)
-        X_val=encodeData(X_val,vocab_own,params)
-        X_test=encodeData(X_test,vocab_own,params)
+        if params['bert_tokens']:
+            vocab_own = None
+            vocab_size = 0
+            padding_idx = 0
+        else:
+            vocab_own = Vocab_own(X_train, word2vecmodel1)
+            vocab_own.create_vocab()
+            padding_idx = vocab_own.stoi['<pad>']
+            vocab_size = len(vocab_own.vocab)
+
+        X_train = encodeData(X_train, vocab_own, params)    # A list of tuples (input_id, attn_score, label)
+        X_val = encodeData(X_val, vocab_own, params)
+        X_test = encodeData(X_test, vocab_own, params)
         
         print("total dataset size:", len(X_train)+len(X_val)+len(X_test))
 
@@ -134,16 +133,15 @@ def createDatasetSplit(params):
         with open(filename[:-7]+'/train_data.pickle', 'wb') as f:
             pickle.dump(X_train, f)
 
-        with open(filename[:-7]+'/val_data.pickle', 'wb') as f:
+        with open(filename[:-7] + '/val_data.pickle', 'wb') as f:
             pickle.dump(X_val, f)
-        with open(filename[:-7]+'/test_data.pickle', 'wb') as f:
+        with open(filename[:-7] + '/test_data.pickle', 'wb') as f:
             pickle.dump(X_test, f)
-        if(params['bert_tokens']==False):
-            with open(filename[:-7]+'/vocab_own.pickle', 'wb') as f:
+        if params['bert_tokens'] is False:
+            with open(filename[:-7] + '/vocab_own.pickle', 'wb') as f:
                 pickle.dump(vocab_own, f)
-    
-    if(params['bert_tokens']==False):
-        return X_train,X_val,X_test,vocab_own
+
+    if params['bert_tokens'] is False:
+        return X_train, X_val, X_test, vocab_own
     else:
-        return X_train,X_val,X_test
-              
+        return X_train, X_val, X_test

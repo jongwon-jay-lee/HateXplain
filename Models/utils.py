@@ -156,12 +156,13 @@ def cross_entropy(input1, target, size_average=True):
     #     return torch.sum(torch.sum(-target * logsoftmax(input), dim=1))
 
 
-def masked_cross_entropy(input1,target,mask):
-    cr_ent=0
-    for h in range(0,mask.shape[0]):
-        cr_ent+=cross_entropy(input1[h][mask[h]],target[h][mask[h]])
-    
-    return cr_ent/mask.shape[0]
+def masked_cross_entropy(input1, target, mask):
+    cr_ent = 0
+    bsz = mask.shape[0]
+    for b_idx in range(0, bsz):
+        cr_ent += cross_entropy(input1[b_idx][mask[b_idx]], target[b_idx][mask[b_idx]])     # truncate by masks
+
+    return cr_ent / mask.shape[0]
 
 
 

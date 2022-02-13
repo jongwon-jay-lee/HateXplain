@@ -83,18 +83,19 @@ def custom_tokenize(sent,tokenizer,max_length=512):
 #output: list of tokens      
 def ek_extra_preprocess(text,params,tokenizer):
     remove_words=['<allcaps>','</allcaps>','<hashtag>','</hashtag>','<elongated>','<emphasis>','<repeated>','\'','s']
-    word_list=text_processor.pre_process_doc(text)
-    if(params['include_special']):
+    word_list = text_processor.pre_process_doc(text)
+    if params['include_special']:
         pass
     else:
-        word_list=list(filter(lambda a: a not in remove_words, word_list)) 
-    if(params['bert_tokens']):
-        sent=" ".join(word_list)
-        sent = re.sub(r"[<\*>]", " ",sent)
-        sub_word_list = custom_tokenize(sent,tokenizer)
+        word_list = list(filter(lambda a: a not in remove_words, word_list))
+    if params['bert_tokens']:
+        sent = " ".join(word_list)
+        # sent = re.sub(r"[<\*>]", " ", sent)
+        sent = re.sub(r"<[^>]*>", " ", sent)
+        sub_word_list = custom_tokenize(sent, tokenizer)
         return sub_word_list
-    else:            
-        word_list=[token for token in word_list if token not in string.punctuation]
+    else:
+        word_list = [token for token in word_list if token not in string.punctuation]
         return word_list
 
 #input: text
