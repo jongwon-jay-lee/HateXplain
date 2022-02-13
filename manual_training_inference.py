@@ -68,6 +68,7 @@ def select_model(params, embeddings):
             model = SC_weighted_BERT.from_pretrained(
                 params['path_files'],  # Use the 12-layer BERT model, with an uncased vocab.
                 num_labels=params['num_classes'],  # The number of output labels
+                # jw - output[2] == attentions
                 output_attentions=True,  # Whether the model returns attentions weights.
                 output_hidden_states=False,  # Whether the model returns all hidden-states.
                 hidden_dropout_prob=params['dropout_bert'],

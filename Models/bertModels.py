@@ -31,6 +31,7 @@ class SC_weighted_BERT(BertPreTrainedModel):
                 labels=None,
                 device=None):
 
+        # outputs = (logits, pooled_output, attention, ...) by loading with `output_attentions=True`
         outputs = self.bert(
             input_ids,
             attention_mask=attention_mask,
